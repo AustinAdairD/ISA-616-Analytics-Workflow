@@ -1,0 +1,216 @@
+title: "Happiness Analysis"
+author: "Claire Linn"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+bibliography: refs.bib
+output:
+  html_document:
+    code_folding: show
+    df_print: paged
+    number_sections: yes
+    theme: cerulean
+    toc: yes
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      cache=TRUE,
+                      out.width="100%",
+                      warning=FALSE,
+                      message=FALSE,
+                      clean_cache=TRUE)
+```
+
+### 1. Ames Iowa Housing Analysis
+
+In this paper I attempted to descern what factors contribute to sales price of a home in Ames Iowa. The data analysed containes housing sales prices from 2006 through 2010.Access to the database can be gained from the Ames site (http://www.cityofames.org/assessor/) by clicking on “property search” or by accessing [the Beacon] (http://beacon.schneidercorp.com/Default.aspx) website and inputting Iowa and Ames in the appropriate fields.
+
+The primary purpose for this paper is to provide guidence for- Friedrich Land Development; who has been engaged in real-estate development in Ames Iowa for over 50 years. Specifically, this analysis will give insights into what housing features have the highest predictability to final sales price of a house. This will allow them to better evaluate the true value of houses currently on the market and understand what features should be added to generate the highest ROI. 
+
+The reader can show any code chunk by clicking on the code button. We chose to make the default for the code hidden since we: (a) wanted to improve the readability of this document; and (b) assumed that the readers will not be interested in reading every code chunk. 
+
+### 1.1 Loading data
+
+```{r}
+rm(list = ls()) # Clears global environment
+library(pacman)
+p_load(DataExplorer, ggplot2, ggcorrplot, dplyr, corrplot, jtools, ggstance, broom.mixed)
+data = read.csv("AmesHousing.csv", stringsAsFactors = TRUE) # reads in data set
+
+# Correctly Code Variables
+data$Bsmt.Full.Bath=factor(data$Bsmt.Full.Bath)
+data$Bsmt.Half.Bath =factor(data$Bsmt.Half.Bath)
+data$Full.Bath =factor(data$Full.Bath)
+data$Half.Bath =factor(data$Half.Bath)
+data$Bedroom.AbvGr = factor(data$Bedroom.AbvGr)
+data$Kitchen.AbvGr = factor(data$Kitchen.AbvGr)
+
+
+```
+
+### 1.2. Data Overview
+
+In viewing the Ames Housing data in R we can see that there are 2,920 observations of 82 unique variables. The Ames Housing data contains 0 missing columns and 13,960 total missing values (about 5.8% of the total values in the data set are missing). The majority of the missing variables came from the following variables; Fireplace.Qu (49% missing), Fence (80% missing), Alley (93% missing), Misc.Fence (96% missing) and Pool.QC (99.6% missing). 
+
+In order to compare correlations in the data a function was generated using logic from Katherine Williams *How to Create a Correlation Matrix with Too Many Variables in R, 2020*. This function returns a simplified correlation plot that onlynly the correlations with a high enough significance level will have a colored circle. 
+
+```{r}
+# data Overview
+dim(data) # gives the number of variables and observations in the data set
+head(data) # gives a glimse of the head of the data
+
+# plot missig data
+plot_missing(data, group = list(Good = 0.05, OK = 0.3, Bad = 0.5, Remove = 1), missing_only = TRUE, geom_label_args = list(), title = NULL, ggtheme = theme_gray(), theme_config = list(legend.position = c("bottom"))) 
+
+# Correlation Plot
+
+corr_simple <- function(data= data,sig=0.5){
+  #convert data to numeric in order to run correlations
+  #convert to factor first to keep the integrity of the data - each value will become a number rather than turn into NA
+df_cor <- data %>% mutate_if(is.character, as.factor)
+df_cor <- df_cor %>% mutate_if(is.factor, as.numeric)
+  #run a correlation and drop the insignificant ones
+corr <- cor(df_cor)
+  #prepare to drop duplicates and correlations of 1     
+corr[lower.tri(corr,diag=TRUE)] <- NA 
+  #drop perfect correlations
+corr[corr == 1] <- NA 
+  #turn into a 3-column table
+corr <- as.data.frame(as.table(corr))
+  #remove the NA values from above 
+corr <- na.omit(corr) 
+  #select significant values  
+corr <- subset(corr, abs(Freq) > sig) 
+  #sort by highest correlation
+corr <- corr[order(-abs(corr$Freq)),] 
+  #print table
+print(corr)
+  #turn corr back into matrix in order to plot with corrplot
+mtx_corr <- reshape2::acast(corr, Var1~Var2, value.var="Freq")
+  
+  #plot correlations visually
+  corrplot(mtx_corr, is.corr=FALSE, tl.col="black", na.label=" ")
+}
+corr_simple(data) # creates a correlation plot including only highly correlated variables 
+```
+
+### 2. Details on Data Preprocessing
+
+Now that we understand our data we can clean it by removing variables that are missing more than 45% of their vlaues.next we will impute the impute the mean of numeric values and the mode of catagorical values that are missing atleast 5% of their values. In order to  Once we have fixed the majority of the missing values we can then omit any variable that is still missing. In doing so we will only be eliminating 104 observation, which should have a minimal impact on developing a model.  
+
+```{r}
+#remove any variables that had atleast 45% missing data
+
+data<-select(data, -Fireplace.Qu)
+data<-select(data, -Fence)
+data<-select(data, -Alley)
+data<-select(data, -Misc.Feature)
+data<-select(data, -Pool.QC)
+
+#impute any variables that had atleast 5% missing data and was not removed
+
+# Creating Mode function
+
+getmode <- function(data) {
+  uniqv <- unique(data)
+  uniqv[which.max(tabulate(match(data, uniqv)))]
+}
+
+#Garage.Finish
+data$M_Garage.Finish<-as.factor(ifelse(is.na(data$Garage.Finish), 1, 0))
+data$Garage.Finish[is.na(data$Garage.Finish)]<-getmode(data$Garage.Finish)
+      #Garage.Type
+data$M_Garage.Type<-as.factor(ifelse(is.na(data$Garage.Type), 1, 0))
+data$Garage.Type[is.na(data$Garage.Type)]<-getmode(data$Garage.Type)
+      #Garage.Cond
+data$M_Garage.Cond<-as.factor(ifelse(is.na(data$Garage.Cond), 1, 0))
+data$Garage.Cond[is.na(data$Garage.Cond)]<-getmode(data$Garage.Cond)
+      #Garage.Qual
+data$M_Garage.Qual<-as.factor(ifelse(is.na(data$Garage.Qual), 1, 0))
+data$Garage.Qual[is.na(data$Garage.Qual)]<-getmode(data$Garage.Qual)
+      #Garage.Yr.Blt
+data$M_Garage.Yr.Blt<-as.factor(ifelse(is.na(data$Garage.Yr.Blt), 1, 0))
+data$Garage.Yr.Blt[is.na(data$Garage.Yr.Blt)]<-median(data$Garage.Yr.Blt, na.rm = TRUE)
+      #Lot.Frontage
+data$M_Lot.Frontage<-as.factor(ifelse(is.na(data$Lot.Frontage), 1, 0))
+data$Lot.Frontage[is.na(data$Lot.Frontage)]<-median(data$Lot.Frontage, na.rm = TRUE)
+    #SalePrice
+data$M_SalePrice<-as.numeric(ifelse(is.na(data$SalePrice), 1, 0))
+data$SalePrice[is.na(data$SalePrice)]<-median(data$SalePrice, na.rm = TRUE)
+
+# remove the newly created factors from the data
+data<-select(data, -M_SalePrice)
+data<-select(data, -M_Lot.Frontage)
+data<-select(data, -M_Garage.Yr.Blt)
+data<-select(data, -M_Garage.Cond)
+data<-select(data, -M_Garage.Type) 
+data<-select(data, -M_Garage.Finish)
+data<-select(data, -M_Garage.Qual)
+
+# remove missing data so we can run a stepwise regression
+data=na.omit(data)
+```
+
+### 3. Building A Linear Regression
+
+To build an effective model we are going to create a stepwise regression. The stepwise regression will add and remove variables until an optimal model is created. 
+
+```{r}
+#Creating the first stepwise regression on training data 
+
+full<-lm(SalePrice~., data = data) # creating full linear regression
+
+null<-lm(SalePrice~1, data=data) # Creating null linear regression
+
+lm.step1<-step(null, scope=list(lower=null, upper=full), direction="both", trace=0) 
+```
+
+### 3. 1. Removing Correlate Variables
+
+Now we need to remove highly correlated variables from the model. Highly correlated variables are redundant in the sence that they communicate repetative information. Likewise, removeing the correlated variables in our model has a minimal impact in the adjusted R squared values. Overall, 84% of the variance in the final sales price of a house in Ames Iowa is explained by our model.
+
+```{r}
+lm = lm(SalePrice ~ Overall.Qual + BsmtFin.SF.1 + Roof.Matl + MS.SubClass + Bsmt.Exposure + Condition.2 + Sale.Condition + Garage.Area + Overall.Cond + Bsmt.Qual + Total.Bsmt.SF + Lot.Area + Pool.Area + Screen.Porch + Functional + Exterior.1st + Land.Contour + Bsmt.Full.Bath + Mas.Vnr.Area + Condition.1 + Fireplaces + Garage.Yr.Blt + Mas.Vnr.Type + BsmtFin.SF.2 + Wood.Deck.SF + Garage.Finish + BsmtFin.Type.1 + MS.Zoning + Land.Slope + Garage.Cars + Kitchen.AbvGr + Low.Qual.Fin.SF + Utilities, data = data)
+
+summary(lm) 
+```
+
+### 3. 2. Create A Graph Showing The Coefficient Values
+
+This barplot depicts thetop 6 coefficient's that have the greatest impact on the final sale price on a home in Iowa. It is important to notw that all of these coefficients are categories for the roof material of a house. This will be a crucial piece of informaton for Friedrich Land Development to keep in mind when they build/renevate houses. 
+
+```{r}
+lm2 = abs(lm$coefficients)
+sort(lm2, decreasing = TRUE)
+lm2 = (head(sort(lm2, decreasing = TRUE), 6))
+barplot(lm2,
+        main = "Top 6 Coefficients (ABS)",
+        names.arg = c("Shngl", "Roll", "Shake", "CompShg", "Membran", "Metal"))
+```
+
+### 3. 3. Create a graph to show the prediction ability of the model 
+
+The histogram of the residuals of a model is a useful proxy for the predictive power of a model. Overall, our model's residuals are normally distributed and centered around 0. This means that our linear regression model is an appropriate predictor for the final sales price of a home in Ames Iowa.
+
+```{r}
+ggplot(data=data, aes(lm$residuals)) +
+  geom_histogram(binwidth = 1, color = "black", fill = "purple4") +
+  theme(panel.background = element_rect(fill = "white"),
+        axis.line.x=element_line(),
+        axis.line.y=element_line()) +
+  ggtitle("Histogram for Model Residuals")
+```
+
+### 4. Conclusion
+
+In analysing our model we can conclude that the most important factor in predicting the final sale price of a house would be the roofing materail used. In a business sense, this makes sense, we can extrapilate that more expensive houses would likely have more expensive roofing material. This, information can help guide Friedrich Land Development determine what roofing material they can utalise for the best ROI. 
+
+Furthermore, our linear regression is able to give insights into several other features of a house and is able to quantify the value (in dollars) of said feature. This can be a good tool in both evaluating the current price of a home on the market, but also in determining what renovations to add next. 
+
+Moving forward, there are some additional questions that are still unanswered:
+
+Is this model useful at explaining the predicted sales price of homes outside of Iowa?
+
+Is this model still relevant in 2020? Have consumers prefernence in housing features shifted significantly from when the data was collected (2006-2010) until today? 
+
+
