@@ -3111,7 +3111,7 @@ data=na.omit(data)</code></pre>
 </div>
 <div id="building-a-linear-regression" class="section level3">
 <h3><span class="header-section-number">0.0.5</span> Building A Linear Regression</h3>
-<p>To build an effective model we are going to create a stepwise regression. The stepwise regression will add and remove variables until an optimal model is created. Our stepwise regression determined taht there are</p>
+<p>To build an effective model we are going to create a stepwise regression. The stepwise regression will add and remove variables until an optimal model is created. The stepwise regression determined that there are a total o 173 variables that are statistically signiicant in predicting the sale price of a home in Ames Iowa.</p>
 <pre class="r"><code>#Creating the first stepwise regression on training data 
 
 full&lt;-lm(SalePrice~., data = data) # creating full linear regression
@@ -3122,7 +3122,9 @@ lm.step1&lt;-step(null, scope=list(lower=null, upper=full), direction=&quot;both
 </div>
 <div id="removing-correlate-variables" class="section level3">
 <h3><span class="header-section-number">0.0.6</span> Removing Correlate Variables</h3>
-<p>Now we need to remove highly correlated variables from the model. Highly correlated variables are redundant in the seance that they communicate repetitive information. Likewise, removing the correlated variables in our model has a minimal impact in the adjusted R squared values. Overall, 84% of the variance in the final sales price of a house in Ames Iowa is explained by our model.</p>
+<p>Now that we have found what variables are statistically significant, we need to remove highly correlated variables from the model. Highly correlated variables are redundant in the seance that they communicate repetitive information. We will also remove the variable neighborhoods as it contains 28 distinct levels which complicates the model and adds unnecessary degrees of freedom. Likewise, removing the correlated variables and neighborhoods in our model has a minimal impact in the adjusted R squared values while creating a simpler model.</p>
+<p>Our simpler model contains a ar ewer 103 variables while maintaining a relatively high R squared value. The new model has an adjusted R squared value of 0.84 in comparison to the previous model which had an adjusted R square value of 0.91.</p>
+<p>This means that in our simpler model 84% of the variance in the final sales price of a house in Ames Iowa is explained by our model.</p>
 <pre class="r"><code>lm = lm(SalePrice ~ Overall.Qual + BsmtFin.SF.1 + Roof.Matl + MS.SubClass + Bsmt.Exposure + Condition.2 + Sale.Condition + Garage.Area + Overall.Cond + Bsmt.Qual + Total.Bsmt.SF + Lot.Area + Pool.Area + Screen.Porch + Functional + Exterior.1st + Land.Contour + Bsmt.Full.Bath + Mas.Vnr.Area + Condition.1 + Fireplaces + Garage.Yr.Blt + Mas.Vnr.Type + BsmtFin.SF.2 + Wood.Deck.SF + Garage.Finish + BsmtFin.Type.1 + MS.Zoning + Land.Slope + Garage.Cars + Kitchen.AbvGr + Low.Qual.Fin.SF + Utilities, data = data)</code></pre>
 </div>
 <div id="create-a-graph-showing-the-coefficient-values" class="section level3">
@@ -3208,7 +3210,7 @@ barplot(lm2,
 </div>
 <div id="create-a-graph-sjowing-the-prediction-ability-of-the-model" class="section level3">
 <h3><span class="header-section-number">0.0.8</span> Create A Graph Sjowing The Prediction Ability Of The Model</h3>
-<p>The histogram of the residuals of a model is a useful proxy for the predictive power of a model. Overall, our model’s residuals are normally distributed and centered around 0. This means that our linear regression model is an appropriate predictor for the final sales price of a home in Ames Iowa.</p>
+<p>The histogram of the residuals of a model is a useful proxy for the predictive power of a model. Overall, our model’s residuals are normally distributed and centered around 0. This, alongside our large R squared value, means that our linear regression model is an appropriate predictor for the final sales price of a home in Ames Iowa.</p>
 <pre class="r"><code>ggplot(data=data, aes(lm$residuals)) +
   geom_histogram(binwidth = 1, color = &quot;black&quot;, fill = &quot;purple4&quot;) +
   theme(panel.background = element_rect(fill = &quot;white&quot;),
@@ -3219,8 +3221,8 @@ barplot(lm2,
 </div>
 <div id="conclusion" class="section level3">
 <h3><span class="header-section-number">0.0.9</span> Conclusion</h3>
-<p>In conclusion, our model was successful in answering the original question of what housing features are most important to predicting the sales price of a home. Although our final model contained a plethora of statistically significant variables there were some that had exceptionally high correlations.</p>
-<p>In analyzing our model we can conclude that the most important factor in predicting the final sale price of a house would be the roofing materiel used. In a business sense, this makes sense, we can extrapolate that more expensive houses would likely have more expensive roofing material. This, information can help guide Friedrich Land Development determine what roofing material they can utilize for the best ROI.</p>
+<p>In conclusion, our model was successful in answering the original question of what factors are associated with the highest sales price of a home in Ames Iowa. Although our final model contained a plethora (103) of statistically significant variables there were some that had exceptionally high correlations.</p>
+<p>In analyzing our model we can conclude that the most important factor in predicting the final sale price of a house would be the roofing materiel used. In a business sense, we will need to do additional exploratory research to understand why roofing material is such an important actor in predicting tyhe inal sale price. This information can help guide Friedrich Land Development to determine what roofing material they can utilize for the best ROI.</p>
 <p>Furthermore, our linear regression is able to give insights into several other features of a house and is able to quantify the value (in dollars) of said feature. This can be a good tool in both evaluating the current price of a home on the market, but also in determining what renovations to add next.</p>
 <p>Moving forward, there are some additional questions that are still unanswered:</p>
 <ul>
