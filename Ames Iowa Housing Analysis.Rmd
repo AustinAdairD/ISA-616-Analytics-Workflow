@@ -23,9 +23,9 @@ knitr::opts_chunk$set(echo = TRUE,
 
 ### Ames Iowa Housing Analysis
 
-In this paper I attempted to discern what factors contribute to sales price of a home in Ames Iowa. The data analyzed contains housing sales prices from 2006 through 2010. Access to the database can be gained from the Ames site (http://www.cityofames.org/assessor/) by clicking on “property search” or by accessing the Beacon (http://beacon.schneidercorp.com/Default.aspx) website and inputting Iowa and Ames in the appropriate fields.
+In this paper I attempted to discern what factors are associated with the highest sales price of a home in Ames Iowa. The data analyzed contains housing sales prices from 2006 through 2010. Access to the database can be gained from the Ames site (http://www.cityofames.org/assessor/) by clicking on “property search” or by accessing the Beacon (http://beacon.schneidercorp.com/Default.aspx) website and inputting Iowa and Ames in the appropriate fields.
 
-The primary purpose for this paper is to provide guidance for - Friedrich Land Development; who has been engaged in real-estate development in Ames Iowa for over 50 years. Specifically, this analysis will give insights into what housing features have the highest correlation to final sales price of a house. This will allow them to better evaluate the true value of houses currently on the market and understand what features should be added to generate the highest ROI. 
+The primary purpose for this paper is to provide guidance for - Friedrich Land Development; who has been engaged in real-estate development in Ames Iowa for over 50 years. Specifically, this analysis will give insights into what housing features are associated with the highest correlation to final sales price of a house. This will allow them to better evaluate the true value of houses currently on the market and understand what features should be added to generate the highest ROI. 
 
 The reader can show any code chunk by clicking on the code button. We chose to make the default for the code hidden since we: (a) wanted to improve the readability of this document; and (b) assumed that the readers will not be interested in reading every code chunk. 
 
@@ -50,9 +50,9 @@ data$Kitchen.AbvGr = factor(data$Kitchen.AbvGr)
 
 ### Data Overview
 
-In viewing the Ames Housing data in R we can see that there are 2,920 observations of 82 unique variables. The Ames Housing data contains 0 missing columns and 13,960 total missing values (about 5.8% of the total values in the data set are missing). The majority of the missing variables came from the following variables; Fireplace.Qu (49% missing), Fence (80% missing), Alley (93% missing), Misc.Fence (96% missing) and Pool.QC (99.6% missing). 
+In viewing the Ames Housing data in R we can see that there are 2,920 observations of 82 unique variables. The Ames Housing data contains 0 missing columns and 13,960 total missing values (about 5.8% of the total values in the data set are missing). The majority of the missing values came from the following variables; Fireplace.Qu (49% missing), Fence (80% missing), Alley (93% missing), Misc.Fence (96% missing) and Pool.QC (99.6% missing).The the columns with large amounts of missing values will mot contribute any value in building our model and will be removed. 
 
-In order to compare correlations in the data a function was generated using logic from Katherine Williams *How to Create a Correlation Matrix with Too Many Variables in R, 2020*. This function returns a simplified correlation plot that  the correlations with a high enough significance level will have a colored circle. 
+Next I will find which of our remaining variables are highly correlated to one another. In order to compare correlations in the data a function was generated using logic from Katherine Williams *How to Create a Correlation Matrix with Too Many Variables in R, 2020*. This function returns a simplified correlation plot that  the correlations with a high enough significance level will have a colored circle. Highly correlated variables will be removed from the model once it is built due to the fact that they contain redundant information. 
 
 ```{r}
 # data Overview
@@ -96,7 +96,9 @@ corr_simple(data) # creates a correlation plot including only highly correlated 
 
 ### Details on Data Preprocessing
 
-Now that we understand our data we can clean it by removing variables that are missing more than 45% of their values.next we will impute the impute the mean of numeric values and the mode of categorical values that are missing least 5% of their values. In order to  Once we have fixed the majority of the missing values we can then omit any variable that is still missing. In doing so we will only be eliminating 104 observation, which should have a minimal impact on developing a model.  
+Now that we understand our data, I will clean it by removing the variables that we identified that were missing least 45% o their values.Then we will impute the impute the mean of numeric values and the mode of categorical values that are missing least 5% of their values. In doing so we are able to retain observations that we would have otherwise omitted. This will give us more information to build our model and will potentially improve its explanatory capabilities. 
+
+Once we have addressed the majority of the missing values, we can then omit any variable that are still missing. In doing so we will only be eliminating 104 observation, which should have a minimal impact on developing a model.  
 
 ```{r}
 #remove any variables that had least 45% missing data
@@ -153,7 +155,7 @@ data=na.omit(data)
 
 ### Building A Linear Regression
 
-To build an effective model we are going to create a stepwise regression. The stepwise regression will add and remove variables until an optimal model is created. 
+To build an effective model we are going to create a stepwise regression. The stepwise regression will add and remove variables until an optimal model is created. The stepwise regression determined that there are a total o 173 variables that are statistically signiicant in predicting the sale price of a home in Ames Iowa. 
 
 ```{r}
 #Creating the first stepwise regression on training data 
@@ -163,11 +165,16 @@ full<-lm(SalePrice~., data = data) # creating full linear regression
 null<-lm(SalePrice~1, data=data) # Creating null linear regression
 
 lm.step1<-step(null, scope=list(lower=null, upper=full), direction="both", trace=0) 
+
 ```
 
-### Removing Correlate Variables
+### Removing Correlate Variables 
 
-Now we need to remove highly correlated variables from the model. Highly correlated variables are redundant in the seance that they communicate repetitive information. Likewise, removing the correlated variables in our model has a minimal impact in the adjusted R squared values. Overall, 84% of the variance in the final sales price of a house in Ames Iowa is explained by our model.
+Now that we have found what variables are statistically significant, we need to remove highly correlated variables from the model. Highly correlated variables are redundant in the seance that they communicate repetitive information. We will also remove the variable neighborhoods as it contains 28 distinct levels which complicates the model and adds unnecessary degrees of freedom. Likewise, removing the correlated variables and neighborhoods in our model has a minimal impact in the adjusted R squared values while creating a simpler model. 
+
+Our simpler model contains a ar ewer 103 variables while maintaining a relatively high R squared value. The new model has an adjusted R squared value of 0.84 in comparison to the previous model which had an adjusted R square value of 0.91. 
+
+This means that in our simpler model 84% of the variance in the final sales price of a house in Ames Iowa is explained by our model.
 
 ```{r}
 lm = lm(SalePrice ~ Overall.Qual + BsmtFin.SF.1 + Roof.Matl + MS.SubClass + Bsmt.Exposure + Condition.2 + Sale.Condition + Garage.Area + Overall.Cond + Bsmt.Qual + Total.Bsmt.SF + Lot.Area + Pool.Area + Screen.Porch + Functional + Exterior.1st + Land.Contour + Bsmt.Full.Bath + Mas.Vnr.Area + Condition.1 + Fireplaces + Garage.Yr.Blt + Mas.Vnr.Type + BsmtFin.SF.2 + Wood.Deck.SF + Garage.Finish + BsmtFin.Type.1 + MS.Zoning + Land.Slope + Garage.Cars + Kitchen.AbvGr + Low.Qual.Fin.SF + Utilities, data = data)
@@ -189,7 +196,7 @@ barplot(lm2,
 
 ### Create A Graph Sjowing The Prediction Ability Of The Model 
 
-The histogram of the residuals of a model is a useful proxy for the predictive power of a model. Overall, our model's residuals are normally distributed and centered around 0. This means that our linear regression model is an appropriate predictor for the final sales price of a home in Ames Iowa.
+The histogram of the residuals of a model is a useful proxy for the predictive power of a model. Overall, our model's residuals are normally distributed and centered around 0. This, alongside our large R squared value, means that our linear regression model is an appropriate predictor for the final sales price of a home in Ames Iowa.
 
 ```{r}
 ggplot(data=data, aes(lm$residuals)) +
@@ -202,9 +209,9 @@ ggplot(data=data, aes(lm$residuals)) +
 
 ### Conclusion
 
-In conclusion, our model was successful in answering the original question of what housing features are most important to predicting the sales price of a home. Although our final model contained a plethora of statistically significant variables there were some that had exceptionally high correlations. 
+In conclusion, our model was successful in answering the original question of what factors are associated with the highest sales price of a home in Ames Iowa. Although our final model contained a plethora (103) of statistically significant variables there were some that had exceptionally high correlations. 
 
-In analyzing our model we can conclude that the most important factor in predicting the final sale price of a house would be the roofing materiel used. In a business sense, this makes sense, we can extrapolate that more expensive houses would likely have more expensive roofing material. This, information can help guide Friedrich Land Development determine what roofing material they can utilize for the best ROI. 
+In analyzing our model we can conclude that the most important factor in predicting the final sale price of a house would be the roofing materiel used. In a business sense, we will need to do additional exploratory research to understand why roofing material is such an important actor in predicting tyhe inal sale price. This information can help guide Friedrich Land Development to determine what roofing material they can utilize for the best ROI.  
 
 Furthermore, our linear regression is able to give insights into several other features of a house and is able to quantify the value (in dollars) of said feature. This can be a good tool in both evaluating the current price of a home on the market, but also in determining what renovations to add next. 
 
